@@ -35,7 +35,7 @@ class App:
         self.dashboard()
 
     # =========================
-    # DASHBOARD PRINCIPAL
+    # DASHBOARD
     # =========================
     def dashboard(self):
         self.limpar()
@@ -58,7 +58,16 @@ class App:
         livros_fisicos = len(self.livro_dao.listar_fisicos())
         livros_digitais = len(self.livro_dao.listar_digitais())
 
-        valor_total = sum(l.calcular_total() for l in self.livro_dao.listar())
+        # 🔥 CORREÇÃO PRINCIPAL (sem usar calcular_total em dict/tupla)
+        valor_total = 0
+
+        for l in self.livro_dao.listar():
+            try:
+                preco = l[3] if len(l) > 3 else 0
+                qtd = l[2] if len(l) > 2 else 1
+                valor_total += float(preco) * int(qtd)
+            except:
+                pass
 
         tk.Label(frame, text=f"📚 Categorias: {categorias}").grid(row=0, column=0, padx=10)
         tk.Label(frame, text=f"👤 Autores: {autores}").grid(row=0, column=1, padx=10)

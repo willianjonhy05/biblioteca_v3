@@ -18,21 +18,11 @@ class LivroFisicoView:
 
         self.tela()
 
-    # =========================
-    # RECARREGAR DADOS SEMPRE
-    # =========================
     def carregar_dados(self):
-        self.categoria_dao = CategoriaDAO()
-        self.editora_dao = EditoraDAO()
-        self.autor_dao = AutorDAO()
+        self.categorias = CategoriaDAO().listar()
+        self.editoras = EditoraDAO().listar()
+        self.autores = AutorDAO().listar()
 
-        self.categorias = self.categoria_dao.listar()
-        self.editoras = self.editora_dao.listar()
-        self.autores = self.autor_dao.listar()
-
-    # =========================
-    # TELA
-    # =========================
     def tela(self):
         self.limpar()
         self.carregar_dados()
@@ -48,8 +38,8 @@ class LivroFisicoView:
             show="headings"
         )
 
-        for col in self.tree["columns"]:
-            self.tree.heading(col, text=col.upper())
+        for c in self.tree["columns"]:
+            self.tree.heading(c, text=c.upper())
 
         self.tree.pack()
 
@@ -64,12 +54,8 @@ class LivroFisicoView:
 
         self.carregar()
 
-    # =========================
-    # CARREGAR
-    # =========================
     def carregar(self):
         self.carregar_dados()
-
         self.tree.delete(*self.tree.get_children())
 
         for l in self.dao.listar():
@@ -77,57 +63,42 @@ class LivroFisicoView:
                 "",
                 "end",
                 values=(
-                    l.isbn,
-                    l.titulo,
-                    l.categoria.descricao if l.categoria else "",
-                    l.editora.razao_social if l.editora else "",
-                    l.paginas,
-                    l.peso
+                    l[0],
+                    l[1],
+                    l[11] if len(l) > 11 else "",
+                    l[13] if len(l) > 13 else "",
+                    l[4],
+                    l[5]
                 )
             )
 
-    # =========================
-    # ADICIONAR
-    # =========================
     def adicionar(self):
         self.carregar_dados()
 
         win = tk.Toplevel(self.root)
         win.title("Novo Livro Físico")
 
-        # ISBN
         tk.Label(win, text="ISBN").grid(row=0, column=0)
         isbn = tk.Entry(win)
         isbn.grid(row=0, column=1)
 
-        # TITULO
         tk.Label(win, text="Título").grid(row=1, column=0)
         titulo = tk.Entry(win)
         titulo.grid(row=1, column=1)
 
-        # CATEGORIA
+        # ================= CATEGORIA =================
         tk.Label(win, text="Categoria").grid(row=2, column=0)
-        categoria_var = tk.StringVar()
+        cat_map = {c.descricao: c for c in self.categorias}
+        cat_combo = ttk.Combobox(win, values=list(cat_map.keys()), state="readonly")
+        cat_combo.grid(row=2, column=1)
 
-        ttk.Combobox(
-            win,
-            textvariable=categoria_var,
-            values=[c.descricao for c in self.categorias],
-            state="readonly"
-        ).grid(row=2, column=1)
+        # ================= EDITORA (CNPJ) =================
+        tk.Label(win, text="Editora (CNPJ)").grid(row=3, column=0)
+        edi_map = {e.cnpj: e for e in self.editoras}
+        edi_combo = ttk.Combobox(win, values=list(edi_map.keys()), state="readonly")
+        edi_combo.grid(row=3, column=1)
 
-        # EDITORA
-        tk.Label(win, text="Editora").grid(row=3, column=0)
-        editora_var = tk.StringVar()
-
-        ttk.Combobox(
-            win,
-            textvariable=editora_var,
-            values=[e.razao_social for e in self.editoras],
-            state="readonly"
-        ).grid(row=3, column=1)
-
-        # AUTORES
+        # ================= AUTORES =================
         tk.Label(win, text="Autores").grid(row=4, column=0)
         listbox = tk.Listbox(win, selectmode="multiple")
         listbox.grid(row=4, column=1)
@@ -135,25 +106,18 @@ class LivroFisicoView:
         for a in self.autores:
             listbox.insert(tk.END, a.nome)
 
-        # PAGINAS
         tk.Label(win, text="Páginas").grid(row=5, column=0)
         paginas = tk.Entry(win)
         paginas.grid(row=5, column=1)
 
-        # PESO
         tk.Label(win, text="Peso").grid(row=6, column=0)
         peso = tk.Entry(win)
         peso.grid(row=6, column=1)
 
-        # SALVAR
         def salvar():
 
-            if not isbn.get() or not titulo.get():
-                messagebox.showerror("Erro", "Preencha ISBN e Título")
-                return
-
-            categoria_obj = next((c for c in self.categorias if c.descricao == categoria_var.get()), None)
-            editora_obj = next((e for e in self.editoras if e.razao_social == editora_var.get()), None)
+            categoria_obj = cat_map.get(cat_combo.get())
+            editora_obj = edi_map.get(edi_combo.get())
             autores_obj = [self.autores[i] for i in listbox.curselection()]
 
             if not categoria_obj or not editora_obj:
@@ -171,22 +135,16 @@ class LivroFisicoView:
                 autores_obj,
                 int(paginas.get() or 0),
                 float(peso.get() or 0),
-                0,
-                0,
-                0,
+                0, 0, 0,
                 "A1"
             )
 
             self.dao.salvar(livro)
-
             win.destroy()
             self.carregar()
 
         tk.Button(win, text="Salvar", command=salvar).grid(row=7, column=0, columnspan=2)
 
-    # =========================
-    # EDITAR (simplificado)
-    # =========================
     def editar(self):
         item = self.tree.focus()
         if not item:
@@ -208,9 +166,6 @@ class LivroFisicoView:
 
         tk.Button(win, text="Salvar", command=salvar).grid(row=1, column=0, columnspan=2)
 
-    # =========================
-    # EXCLUIR
-    # =========================
     def excluir(self):
         item = self.tree.focus()
         if not item:
@@ -222,9 +177,6 @@ class LivroFisicoView:
             self.dao.excluir(isbn)
             self.carregar()
 
-    # =========================
-    # LIMPAR
-    # =========================
     def limpar(self):
         for w in self.root.winfo_children():
             w.destroy()

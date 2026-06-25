@@ -1,7 +1,9 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-from dao.categoria_dao import CategoriaDAO
+
 from dao.livro_digital_dao import LivroDigitalDAO
+from dao.categoria_dao import CategoriaDAO
+from dao.editora_dao import EditoraDAO
 from models.livro import LivroDigital
 
 
@@ -15,16 +17,20 @@ class LivroDigitalView:
         self.tela()
 
     # =========================
-    # TELA PRINCIPAL
+    # CARREGAR DADOS
+    # =========================
+    def carregar_dados(self):
+        self.categorias = CategoriaDAO().listar()
+        self.editoras = EditoraDAO().listar()
+
+    # =========================
+    # TELA
     # =========================
     def tela(self):
         self.limpar()
+        self.carregar_dados()
 
-        tk.Label(
-            self.root,
-            text="💻 Livros Digitais",
-            font=("Arial", 14, "bold")
-        ).pack(pady=10)
+        tk.Label(self.root, text="💻 Livros Digitais", font=("Arial", 14, "bold")).pack(pady=10)
 
         frame = tk.Frame(self.root)
         frame.pack()
@@ -35,25 +41,19 @@ class LivroDigitalView:
             show="headings"
         )
 
-        self.tree.heading("isbn", text="ISBN")
-        self.tree.heading("titulo", text="Título")
-        self.tree.heading("formato", text="Formato")
-        self.tree.heading("tamanho", text="MB")
-        self.tree.heading("preco", text="Preço")
+        for c in self.tree["columns"]:
+            self.tree.heading(c, text=c.upper())
 
         self.tree.pack()
 
-        # =========================
-        # BOTÕES (CRUD)
-        # =========================
         btn = tk.Frame(self.root)
         btn.pack(pady=10)
 
-        tk.Button(btn, text="🔄 Atualizar", width=12, command=self.carregar).grid(row=0, column=0, padx=5)
-        tk.Button(btn, text="➕ Novo", width=12, command=self.adicionar).grid(row=0, column=1, padx=5)
-        tk.Button(btn, text="✏ Editar", width=12, command=self.editar).grid(row=0, column=2, padx=5)
-        tk.Button(btn, text="🗑 Excluir", width=12, command=self.excluir).grid(row=0, column=3, padx=5)
-        tk.Button(btn, text="🔙 Voltar", width=12, command=self.voltar).grid(row=0, column=4, padx=5)
+        tk.Button(btn, text="Atualizar", command=self.carregar).grid(row=0, column=0)
+        tk.Button(btn, text="Novo", command=self.adicionar).grid(row=0, column=1)
+        tk.Button(btn, text="Editar", command=self.editar).grid(row=0, column=2)
+        tk.Button(btn, text="Excluir", command=self.excluir).grid(row=0, column=3)
+        tk.Button(btn, text="Voltar", command=self.voltar).grid(row=0, column=4)
 
         self.carregar()
 
@@ -61,6 +61,7 @@ class LivroDigitalView:
     # CARREGAR
     # =========================
     def carregar(self):
+        self.carregar_dados()
         self.tree.delete(*self.tree.get_children())
 
         for l in self.dao.listar():
@@ -68,11 +69,11 @@ class LivroDigitalView:
                 "",
                 "end",
                 values=(
-                    l.isbn,
-                    l.titulo,
-                    l.formato,
-                    l.tamanho_mb,
-                    f"R$ {l.preco:.2f}"
+                    l[0],  # isbn
+                    l[1],  # titulo
+                    l[2],  # formato
+                    l[3],  # tamanho
+                    f"R$ {l[4]:.2f}"
                 )
             )
 
@@ -105,7 +106,7 @@ class LivroDigitalView:
 
         def salvar():
             if not isbn.get() or not titulo.get():
-                messagebox.showerror("Erro", "Preencha os campos obrigatórios")
+                messagebox.showerror("Erro", "Campos obrigatórios")
                 return
 
             livro = LivroDigital(
@@ -114,11 +115,11 @@ class LivroDigitalView:
                 2024,
                 None,
                 1,
-                float(preco.get()),
+                float(preco.get() or 0),
                 None,
                 [],
                 formato.get(),
-                float(tamanho.get())
+                float(tamanho.get() or 0)
             )
 
             self.dao.salvar(livro)
@@ -152,7 +153,7 @@ class LivroDigitalView:
         formato_e.insert(0, formato)
         formato_e.grid(row=1, column=1)
 
-        tk.Label(win, text="MB").grid(row=2, column=0)
+        tk.Label(win, text="Tamanho MB").grid(row=2, column=0)
         tamanho_e = tk.Entry(win)
         tamanho_e.insert(0, tamanho)
         tamanho_e.grid(row=2, column=1)
@@ -162,7 +163,7 @@ class LivroDigitalView:
                 isbn,
                 titulo_e.get(),
                 formato_e.get(),
-                float(tamanho_e.get())
+                float(tamanho_e.get() or 0)
             )
 
             win.destroy()

@@ -5,3 +5,7 @@ class Autor:
         self.passaporte = passaporte
         self.nome = nome
         self.nacionalidade = nacionalidade
+        
+        
+    def __str__(self):
+        return self.nome

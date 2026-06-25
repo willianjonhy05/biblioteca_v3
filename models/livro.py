@@ -8,11 +8,11 @@ class Livro:
         isbn,
         titulo,
         ano,
-        editora: Editora,
+        editora,
         quantidade_exemplares,
         preco,
-        categoria: Categoria,
-        autores: list
+        categoria,
+        autores
     ):
         self.isbn = isbn
         self.titulo = titulo
@@ -21,27 +21,9 @@ class Livro:
         self.quantidade_exemplares = quantidade_exemplares
         self.preco = preco
         self.categoria = categoria
-
-        # validação forte de autores
-        if not isinstance(autores, list):
-            raise TypeError("autores deve ser uma lista de objetos Autor")
-
-        for a in autores:
-            if not isinstance(a, Autor):
-                raise TypeError("Todos os autores devem ser objetos Autor")
-
         self.autores = autores
 
-        # associações
-        self.categoria.adicionar_livro(self)
-
-        for autor in self.autores:
-            autor.adicionar_livro(self)
-
     def calcular_total(self):
-        """
-        método base (polimorfismo)
-        """
         return self.preco * self.quantidade_exemplares
 
     def __str__(self):
