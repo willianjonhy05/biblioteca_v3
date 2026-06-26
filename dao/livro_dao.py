@@ -195,3 +195,42 @@ class LivroDAO:
 
         conn.commit()
         conn.close()
+        
+    def comprar(self, isbn, quantidade):
+        conn = conectar()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT quantidade_exemplares, preco, tipo
+            FROM livro
+            WHERE isbn = ?
+        """, (isbn,))
+
+        row = cursor.fetchone()
+
+        if not row:
+            conn.close()
+            return 0
+
+        estoque, preco, tipo = row
+
+        # regra: digital não controla estoque (opcional ERP real)
+        if tipo == "FISICO":
+            if quantidade > estoque:
+                conn.close()
+                raise ValueError("Estoque insuficiente")
+
+            novo_estoque = estoque - quantidade
+
+            cursor.execute("""
+                UPDATE livro
+                SET quantidade_exemplares = ?
+                WHERE isbn = ?
+            """, (novo_estoque, isbn))
+
+        total = quantidade * preco
+
+        conn.commit()
+        conn.close()
+
+        return total

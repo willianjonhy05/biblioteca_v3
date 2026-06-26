@@ -244,6 +244,45 @@ Peso: {livro[8] if len(livro) > 8 else ''}
 
         tk.Button(win, text="Salvar", command=salvar).grid(row=10, column=0, columnspan=2)
 
+
+    def comprar(self):
+        item = self.tree.focus()
+
+        if not item:
+            messagebox.showwarning("Aviso", "Selecione um livro")
+            return
+
+        isbn = self.tree.item(item, "values")[0]
+
+        win = tk.Toplevel(self.root)
+        win.title("Comprar Livro")
+
+        tk.Label(win, text="Quantidade").grid(row=0, column=0)
+        qtd = tk.Entry(win)
+        qtd.grid(row=0, column=1)
+
+        def confirmar():
+            try:
+                quantidade = int(qtd.get())
+                if quantidade <= 0:
+                    raise ValueError
+
+                total = self.dao.comprar(isbn, quantidade)
+
+                messagebox.showinfo(
+                    "Compra realizada",
+                    f"Total: R$ {total:.2f}"
+                )
+
+                win.destroy()
+                self.carregar()
+
+            except Exception as e:
+                messagebox.showerror("Erro", str(e))
+
+        tk.Button(win, text="Confirmar", command=confirmar).grid(row=1, column=0, columnspan=2)
+
+
     # =========================
     # EXCLUIR
     # =========================

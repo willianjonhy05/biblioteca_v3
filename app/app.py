@@ -68,7 +68,7 @@ class App:
 
         tk.Label(frame, text=f"📖 Físicos: {livros_fisicos}").grid(row=1, column=0, padx=10)
         tk.Label(frame, text=f"💻 Digitais: {livros_digitais}").grid(row=1, column=1, padx=10)
-        tk.Label(frame, text=f"💰 Total: R$ {valor_total:.2f}").grid(row=1, column=2, padx=10)
+        tk.Label(frame, text=f"💰 Total em Mercadoria: R$ {valor_total:.2f}").grid(row=1, column=2, padx=10)
 
         # ================= MENU =================
         tk.Label(self.root, text="📂 MÓDULOS", font=("Arial", 16, "bold")).pack(pady=15)
@@ -86,6 +86,7 @@ class App:
 
         tk.Button(frame3, text="📖 Livros Físicos", width=18, command=self.tela_livro_fisico).grid(row=0, column=0, padx=5)
         tk.Button(frame3, text="💻 Livros Digitais", width=18, command=self.tela_livro_digital).grid(row=0, column=1, padx=5)
+
 
         tk.Button(self.root, text="❌ Sair", command=self.root.quit).pack(pady=20)
 
