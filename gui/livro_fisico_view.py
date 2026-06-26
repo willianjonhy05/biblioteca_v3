@@ -184,7 +184,8 @@ Peso: {livro[8] if len(livro) > 8 else ''}
         cat.grid(row=3, column=1)
 
         # editora
-        edi_map = {e.cnpj: e for e in self.editoras}
+        edi_map = {e.razao_social: e for e in self.editoras}
+
         tk.Label(win, text="Editora").grid(row=4, column=0)
         edi = ttk.Combobox(win, values=list(edi_map.keys()), state="readonly")
         edi.grid(row=4, column=1)
