@@ -1,43 +1,24 @@
 from database.db import conectar
-from models.livro import LivroFisico
+from dao.editora_dao import EditoraDAO
 
 
 class LivroFisicoDAO:
 
     # =========================
-    # BUSCAR ID DA EDITORA PELO CNPJ
-    # =========================
-    def get_editora_id(self, cnpj):
-        conn = conectar()
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            SELECT id FROM editora WHERE cnpj = ?
-        """, (cnpj,))
-
-        row = cursor.fetchone()
-        conn.close()
-
-        return row[0] if row else None
-
-    # =========================
-    # BUSCAR CODIGO CATEGORIA
-    # =========================
-    def get_categoria_id(self, codigo):
-        return codigo  # já é correto no seu banco
-
-    # =========================
     # SALVAR
     # =========================
     def salvar(self, livro):
+
         conn = conectar()
         cursor = conn.cursor()
 
+        # resolve FK editora (CNPJ -> ID)
         editora_id = EditoraDAO().buscar_id_por_cnpj(livro.editora.cnpj)
 
         if not editora_id:
             raise ValueError("Editora inválida")
 
+        # ================= LIVRO BASE =================
         cursor.execute("""
             INSERT INTO livro (
                 isbn, titulo, ano,
@@ -55,33 +36,7 @@ class LivroFisicoDAO:
             livro.preco
         ))
 
-        cursor.execute("""
-            INSERT INTO livro_fisico (
-                isbn, paginas, peso,
-                altura, largura, profundidade,
-                localizacao_estante
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (
-            livro.isbn,
-            livro.paginas,
-            livro.peso,
-            livro.altura,
-            livro.largura,
-            livro.profundidade,
-            livro.localizacao_estante
-        ))
-
-        for autor in livro.autores:
-            cursor.execute("""
-                INSERT INTO livro_autor (isbn, passaporte)
-                VALUES (?, ?)
-            """, (livro.isbn, autor.passaporte))
-
-        conn.commit()
-        conn.close()
-
-        # ================= DETALHE FÍSICO =================
+        # ================= LIVRO FÍSICO =================
         cursor.execute("""
             INSERT INTO livro_fisico (
                 isbn, paginas, peso,
@@ -104,16 +59,13 @@ class LivroFisicoDAO:
             cursor.execute("""
                 INSERT INTO livro_autor (isbn, passaporte)
                 VALUES (?, ?)
-            """, (
-                livro.isbn,
-                autor.passaporte
-            ))
+            """, (livro.isbn, autor.passaporte))
 
         conn.commit()
         conn.close()
 
     # =========================
-    # LISTAR
+    # LISTAR COMPLETO
     # =========================
     def listar(self):
         conn = conectar()
@@ -121,18 +73,35 @@ class LivroFisicoDAO:
 
         cursor.execute("""
             SELECT 
-                l.isbn, l.titulo,
-                l.quantidade_exemplares, l.preco,
-                lf.paginas, lf.peso,
-                lf.altura, lf.largura, lf.profundidade,
+                l.isbn,
+                l.titulo,
+                l.ano,
+                l.quantidade_exemplares,
+                l.preco,
+
+                e.razao_social,
+                c.descricao,
+
+                lf.paginas,
+                lf.peso,
+                lf.altura,
+                lf.largura,
+                lf.profundidade,
                 lf.localizacao_estante,
-                c.codigo, c.descricao,
-                e.id, e.razao_social
+
+                GROUP_CONCAT(a.nome, ', ') as autores
+
             FROM livro l
-            LEFT JOIN livro_fisico lf ON lf.isbn = l.isbn
-            LEFT JOIN categoria c ON c.codigo = l.categoria_codigo
+
             LEFT JOIN editora e ON e.id = l.editora_id
+            LEFT JOIN categoria c ON c.codigo = l.categoria_codigo
+            LEFT JOIN livro_fisico lf ON lf.isbn = l.isbn
+            LEFT JOIN livro_autor la ON la.isbn = l.isbn
+            LEFT JOIN autor a ON a.passaporte = la.passaporte
+
             WHERE l.tipo = 'FISICO'
+
+            GROUP BY l.isbn
         """)
 
         rows = cursor.fetchall()
@@ -141,7 +110,7 @@ class LivroFisicoDAO:
         return rows
 
     # =========================
-    # DELETE
+    # EXCLUIR
     # =========================
     def excluir(self, isbn):
         conn = conectar()
@@ -153,7 +122,7 @@ class LivroFisicoDAO:
         conn.close()
 
     # =========================
-    # UPDATE
+    # ATUALIZAR
     # =========================
     def atualizar(self, isbn, titulo):
         conn = conectar()
@@ -164,6 +133,19 @@ class LivroFisicoDAO:
             SET titulo = ?
             WHERE isbn = ?
         """, (titulo, isbn))
+
+        conn.commit()
+        conn.close()
+        
+    def atualizar_qtd_preco(self, isbn, quantidade, preco):
+        conn = conectar()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            UPDATE livro
+            SET quantidade_exemplares = ?, preco = ?
+            WHERE isbn = ?
+        """, (quantidade, preco, isbn))
 
         conn.commit()
         conn.close()
