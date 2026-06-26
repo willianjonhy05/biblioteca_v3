@@ -11,7 +11,7 @@ class LivroDigitalDAO:
         conn = conectar()
         cursor = conn.cursor()
 
-        # ================= LIVRO BASE =================
+        # LIVRO BASE
         cursor.execute("""
             INSERT INTO livro (
                 isbn, titulo, ano,
@@ -29,7 +29,7 @@ class LivroDigitalDAO:
             livro.preco
         ))
 
-        # ================= DETALHE DIGITAL =================
+        # DETALHE DIGITAL
         cursor.execute("""
             INSERT INTO livro_digital (
                 isbn, formato, tamanho_mb,
@@ -40,11 +40,11 @@ class LivroDigitalDAO:
             livro.isbn,
             livro.formato,
             livro.tamanho_mb,
-            livro.link_download,
-            1 if livro.possui_drm else 0
+            getattr(livro, "link_download", None),
+            0
         ))
 
-        # ================= AUTORES (N:N) =================
+        # AUTORES N:N
         for autor in livro.autores:
             cursor.execute("""
                 INSERT INTO livro_autor (isbn, passaporte)
@@ -58,7 +58,7 @@ class LivroDigitalDAO:
         conn.close()
 
     # =========================
-    # LISTAR
+    # LISTAR (ENXUTO PARA GRID)
     # =========================
     def listar(self):
         conn = conectar()
@@ -68,21 +68,20 @@ class LivroDigitalDAO:
             SELECT 
                 l.isbn,
                 l.titulo,
+                c.descricao,
+                e.razao_social,
                 ld.formato,
                 ld.tamanho_mb,
-                l.preco,
-                c.descricao,
-                e.razao_social
+                l.preco
             FROM livro l
             LEFT JOIN livro_digital ld ON ld.isbn = l.isbn
             LEFT JOIN categoria c ON c.codigo = l.categoria_codigo
-            LEFT JOIN editora e ON e.cnpj = l.editora_id
+            LEFT JOIN editora e ON e.id = l.editora_id
             WHERE l.tipo = 'DIGITAL'
         """)
 
         rows = cursor.fetchall()
         conn.close()
-
         return rows
 
     # =========================
@@ -118,3 +117,27 @@ class LivroDigitalDAO:
 
         conn.commit()
         conn.close()
+
+    # =========================
+    # DETALHES COMPLETOS
+    # =========================
+    def detalhes(self, isbn):
+        conn = conectar()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT 
+                l.isbn, l.titulo, l.ano,
+                l.preco, l.quantidade_exemplares,
+                c.descricao, e.razao_social,
+                ld.formato, ld.tamanho_mb
+            FROM livro l
+            LEFT JOIN livro_digital ld ON ld.isbn = l.isbn
+            LEFT JOIN categoria c ON c.codigo = l.categoria_codigo
+            LEFT JOIN editora e ON e.id = l.editora_id
+            WHERE l.isbn = ?
+        """, (isbn,))
+
+        row = cursor.fetchone()
+        conn.close()
+        return row
