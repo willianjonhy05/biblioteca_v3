@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-
+from dao.autor_dao import AutorDAO
 from dao.nacionalidade_dao import NacionalidadeDAO
 from models.nacionalidade import Nacionalidade
 
@@ -9,6 +9,7 @@ class NacionalidadeView:
 
     def __init__(self, root, voltar):
         self.root = root
+        self.autor_dao = AutorDAO()
         self.dao = NacionalidadeDAO()
         self.voltar = voltar
 
@@ -29,13 +30,20 @@ class NacionalidadeView:
         frame = tk.Frame(self.root)
         frame.pack()
 
-        self.tree = ttk.Treeview(frame, columns=("codigo", "descricao"), show="headings")
+        # ✔ agora inclui coluna de quantidade
+        self.tree = ttk.Treeview(
+            frame,
+            columns=("codigo", "descricao", "qtd"),
+            show="headings"
+        )
 
         self.tree.heading("codigo", text="Código")
         self.tree.heading("descricao", text="Descrição")
+        self.tree.heading("qtd", text="Qtd Autores")
 
         self.tree.column("codigo", width=100)
         self.tree.column("descricao", width=250)
+        self.tree.column("qtd", width=120, anchor="center")
 
         self.tree.pack()
 
@@ -46,7 +54,7 @@ class NacionalidadeView:
         btn_frame.pack(pady=10)
 
         tk.Button(btn_frame, text="Atualizar", command=self.carregar).grid(row=0, column=0, padx=5)
-        tk.Button(btn_frame, text="Adicionar", command=self.adicionar).grid(row=0, column=1, padx=5)  # 🔥 NOVO
+        tk.Button(btn_frame, text="Adicionar", command=self.adicionar).grid(row=0, column=1, padx=5)
         tk.Button(btn_frame, text="Editar", command=self.editar).grid(row=0, column=2, padx=5)
         tk.Button(btn_frame, text="Excluir", command=self.excluir).grid(row=0, column=3, padx=5)
         tk.Button(btn_frame, text="Voltar", command=self.voltar).grid(row=0, column=4, padx=5)
@@ -60,10 +68,18 @@ class NacionalidadeView:
         self.tree.delete(*self.tree.get_children())
 
         for n in self.dao.listar():
-            self.tree.insert("", "end", values=(n.codigo, n.descricao))
+
+            # ✔ conta autores corretamente por nacionalidade
+            qtd = self.autor_dao.contar_por_nacionalidade(n.codigo)
+
+            self.tree.insert(
+                "",
+                "end",
+                values=(n.codigo, n.descricao, qtd)
+            )
 
     # =========================
-    # ADICIONAR (NOVO)
+    # ADICIONAR
     # =========================
     def adicionar(self):
         win = tk.Toplevel(self.root)
@@ -97,7 +113,7 @@ class NacionalidadeView:
             messagebox.showwarning("Aviso", "Selecione uma nacionalidade")
             return
 
-        codigo, descricao = self.tree.item(item, "values")
+        codigo, descricao, _ = self.tree.item(item, "values")
 
         win = tk.Toplevel(self.root)
         win.title("Editar Nacionalidade")
@@ -132,7 +148,7 @@ class NacionalidadeView:
             messagebox.showwarning("Aviso", "Selecione uma nacionalidade")
             return
 
-        codigo, _ = self.tree.item(item, "values")
+        codigo = self.tree.item(item, "values")[0]
 
         if messagebox.askyesno("Confirmação", "Deseja excluir?"):
             self.dao.excluir(codigo)

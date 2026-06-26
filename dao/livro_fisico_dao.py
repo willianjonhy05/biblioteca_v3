@@ -29,16 +29,15 @@ class LivroFisicoDAO:
     # =========================
     # SALVAR
     # =========================
-    def salvar(self, livro: LivroFisico):
+    def salvar(self, livro):
         conn = conectar()
         cursor = conn.cursor()
 
-        editora_id = self.get_editora_id(livro.editora.cnpj)
+        editora_id = EditoraDAO().buscar_id_por_cnpj(livro.editora.cnpj)
 
         if not editora_id:
-            raise Exception("Editora não encontrada no banco")
+            raise ValueError("Editora inválida")
 
-        # ================= LIVRO BASE =================
         cursor.execute("""
             INSERT INTO livro (
                 isbn, titulo, ano,
@@ -50,11 +49,37 @@ class LivroFisicoDAO:
             livro.isbn,
             livro.titulo,
             livro.ano,
-            editora_id,              # 🔥 CORRETO AGORA
+            editora_id,
             livro.categoria.codigo,
             livro.quantidade_exemplares,
             livro.preco
         ))
+
+        cursor.execute("""
+            INSERT INTO livro_fisico (
+                isbn, paginas, peso,
+                altura, largura, profundidade,
+                localizacao_estante
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            livro.isbn,
+            livro.paginas,
+            livro.peso,
+            livro.altura,
+            livro.largura,
+            livro.profundidade,
+            livro.localizacao_estante
+        ))
+
+        for autor in livro.autores:
+            cursor.execute("""
+                INSERT INTO livro_autor (isbn, passaporte)
+                VALUES (?, ?)
+            """, (livro.isbn, autor.passaporte))
+
+        conn.commit()
+        conn.close()
 
         # ================= DETALHE FÍSICO =================
         cursor.execute("""

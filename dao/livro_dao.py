@@ -1,15 +1,23 @@
 from database.db import conectar
 from models.livro import Livro
-from models.editora import Editora
-from models.categoria import Categoria
-from models.autor import Autor
+from dao.editora_dao import EditoraDAO
 
 
 class LivroDAO:
 
+    # =========================
+    # SALVAR LIVRO BASE
+    # =========================
     def salvar(self, livro: Livro):
         conn = conectar()
         cursor = conn.cursor()
+
+        # ✔ converte CNPJ -> ID (OBRIGATÓRIO pelo seu banco)
+        editora_id = EditoraDAO().buscar_id_por_cnpj(livro.editora.cnpj)
+
+        if not editora_id:
+            conn.close()
+            raise ValueError("Editora inválida (CNPJ não encontrado)")
 
         cursor.execute("""
             INSERT INTO livro (
@@ -17,21 +25,168 @@ class LivroDAO:
                 editora_id, categoria_codigo,
                 quantidade_exemplares, preco, tipo
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'BASE')
         """, (
             livro.isbn,
             livro.titulo,
             livro.ano,
-            livro.editora.id if hasattr(livro.editora, "id") else None,
+            editora_id,
             livro.categoria.codigo,
             livro.quantidade_exemplares,
-            livro.preco,
-            "BASE"
+            livro.preco
         ))
+
+        # =========================
+        # RELAÇÃO LIVRO-EDITORA (ERP LIMPO)
+        # =========================
+        cursor.execute("""
+            INSERT INTO editora_livro (editora_id, isbn)
+            VALUES (?, ?)
+        """, (
+            editora_id,
+            livro.isbn
+        ))
+
+        # =========================
+        # RELAÇÃO LIVRO-AUTOR
+        # =========================
+        for autor in livro.autores:
+            cursor.execute("""
+                INSERT INTO livro_autor (isbn, passaporte)
+                VALUES (?, ?)
+            """, (
+                livro.isbn,
+                autor.passaporte
+            ))
 
         conn.commit()
         conn.close()
 
+    # =========================
+    # LISTAR LIVROS (OBJETO)
+    # =========================
+    def listar(self):
+        conn = conectar()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT 
+                l.isbn,
+                l.titulo,
+                l.ano,
+                l.quantidade_exemplares,
+                l.preco,
+                e.cnpj,
+                e.razao_social,
+                c.codigo,
+                c.descricao
+            FROM livro l
+            LEFT JOIN editora e ON e.id = l.editora_id
+            LEFT JOIN categoria c ON c.codigo = l.categoria_codigo
+        """)
+
+        rows = cursor.fetchall()
+        conn.close()
+
+        livros = []
+
+        for r in rows:
+            livro = Livro(
+                r[0],  # isbn
+                r[1],  # titulo
+                r[2],  # ano
+                None,  # editora (pode evoluir depois)
+                r[3],  # quantidade
+                r[4],  # preco
+                None,  # categoria
+                []
+            )
+
+            livros.append(livro)
+
+        return livros
+
+    # =========================
+    # LISTAR FÍSICOS
+    # =========================
+    def listar_fisicos(self):
+        conn = conectar()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT 
+                l.isbn,
+                l.titulo,
+                lf.paginas,
+                lf.peso,
+                lf.localizacao_estante
+            FROM livro l
+            INNER JOIN livro_fisico lf ON lf.isbn = l.isbn
+        """)
+
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+
+    # =========================
+    # LISTAR DIGITAIS
+    # =========================
+    def listar_digitais(self):
+        conn = conectar()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT 
+                l.isbn,
+                l.titulo,
+                ld.formato,
+                ld.tamanho_mb
+            FROM livro l
+            INNER JOIN livro_digital ld ON ld.isbn = l.isbn
+        """)
+
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+
+    # =========================
+    # CONTAGEM POR EDITORA (CORRETO)
+    # =========================
+    def contar_por_editora(self, cnpj):
+        conn = conectar()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM livro l
+            INNER JOIN editora e ON e.id = l.editora_id
+            WHERE e.cnpj = ?
+        """, (cnpj,))
+
+        qtd = cursor.fetchone()[0]
+        conn.close()
+        return qtd
+
+    # =========================
+    # CONTAGEM POR CATEGORIA
+    # =========================
+    def contar_por_categoria(self, codigo):
+        conn = conectar()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM livro
+            WHERE categoria_codigo = ?
+        """, (codigo,))
+
+        qtd = cursor.fetchone()[0]
+        conn.close()
+        return qtd
+
+    # =========================
+    # EXCLUIR
+    # =========================
     def excluir(self, isbn):
         conn = conectar()
         cursor = conn.cursor()
@@ -40,90 +195,3 @@ class LivroDAO:
 
         conn.commit()
         conn.close()
-        
-    def listar(self):
-        conn = conectar()
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            SELECT isbn, titulo, ano, quantidade_exemplares, preco, tipo
-            FROM livro
-        """)
-
-        rows = cursor.fetchall()
-        conn.close()
-
-        livros = []
-
-        for isbn, titulo, ano, qtd, preco, tipo in rows:
-            livros.append({
-                "isbn": isbn,
-                "titulo": titulo,
-                "ano": ano,
-                "quantidade": qtd,
-                "preco": preco,
-                "tipo": tipo
-            })
-
-        return livros
-    
-    def listar_fisicos(self):
-        conn = conectar()
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            SELECT l.isbn, l.titulo, l.ano, lf.paginas, lf.peso, lf.localizacao_estante
-            FROM livro l
-            INNER JOIN livro_fisico lf ON l.isbn = lf.isbn
-        """)
-
-        rows = cursor.fetchall()
-        conn.close()
-
-        return rows    
-    
-    
-    def listar_digitais(self):
-        conn = conectar()
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            SELECT l.isbn, l.titulo, l.ano, ld.formato, ld.tamanho_mb
-            FROM livro l
-            INNER JOIN livro_digital ld ON l.isbn = ld.isbn
-        """)
-
-        rows = cursor.fetchall()
-        conn.close()
-
-        return rows
-    
-    def contar_por_editora(self, cnpj):
-        conn = conectar()
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            SELECT COUNT(*)
-            FROM livro
-            WHERE editora_cnpj = ?
-        """, (cnpj,))
-
-        resultado = cursor.fetchone()[0]
-        conn.close()
-
-        return resultado    
-    
-    def contar_por_categoria(self, codigo_categoria):
-        conn = conectar()
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            SELECT COUNT(*)
-            FROM livro
-            WHERE categoria_id = ?
-        """, (codigo_categoria,))
-
-        qtd = cursor.fetchone()[0]
-        conn.close()
-
-        return qtd

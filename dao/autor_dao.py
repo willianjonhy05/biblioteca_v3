@@ -67,3 +67,18 @@ class AutorDAO:
 
         conn.commit()
         conn.close()
+        
+    def contar_por_nacionalidade(self, codigo_nacionalidade):
+        conn = conectar()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM autor
+            WHERE nacionalidade_codigo = ?
+        """, (codigo_nacionalidade,))
+
+        qtd = cursor.fetchone()[0]
+        conn.close()
+
+        return qtd

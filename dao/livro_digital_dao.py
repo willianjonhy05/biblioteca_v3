@@ -11,6 +11,7 @@ class LivroDigitalDAO:
         conn = conectar()
         cursor = conn.cursor()
 
+        # ================= LIVRO BASE =================
         cursor.execute("""
             INSERT INTO livro (
                 isbn, titulo, ano,
@@ -22,12 +23,13 @@ class LivroDigitalDAO:
             livro.isbn,
             livro.titulo,
             livro.ano,
-            livro.editora.id if livro.editora else None,
+            livro.editora.cnpj if livro.editora else None,
             livro.categoria.codigo if livro.categoria else None,
             livro.quantidade_exemplares,
             livro.preco
         ))
 
+        # ================= DETALHE DIGITAL =================
         cursor.execute("""
             INSERT INTO livro_digital (
                 isbn, formato, tamanho_mb,
@@ -42,6 +44,16 @@ class LivroDigitalDAO:
             1 if livro.possui_drm else 0
         ))
 
+        # ================= AUTORES (N:N) =================
+        for autor in livro.autores:
+            cursor.execute("""
+                INSERT INTO livro_autor (isbn, passaporte)
+                VALUES (?, ?)
+            """, (
+                livro.isbn,
+                autor.passaporte
+            ))
+
         conn.commit()
         conn.close()
 
@@ -54,11 +66,17 @@ class LivroDigitalDAO:
 
         cursor.execute("""
             SELECT 
-                l.isbn, l.titulo,
-                ld.formato, ld.tamanho_mb,
-                l.preco
+                l.isbn,
+                l.titulo,
+                ld.formato,
+                ld.tamanho_mb,
+                l.preco,
+                c.descricao,
+                e.razao_social
             FROM livro l
-            INNER JOIN livro_digital ld ON ld.isbn = l.isbn
+            LEFT JOIN livro_digital ld ON ld.isbn = l.isbn
+            LEFT JOIN categoria c ON c.codigo = l.categoria_codigo
+            LEFT JOIN editora e ON e.cnpj = l.editora_id
             WHERE l.tipo = 'DIGITAL'
         """)
 

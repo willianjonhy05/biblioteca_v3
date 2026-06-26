@@ -18,11 +18,17 @@ class LivroFisicoView:
 
         self.tela()
 
+    # =========================
+    # DADOS
+    # =========================
     def carregar_dados(self):
         self.categorias = CategoriaDAO().listar()
         self.editoras = EditoraDAO().listar()
         self.autores = AutorDAO().listar()
 
+    # =========================
+    # TELA
+    # =========================
     def tela(self):
         self.limpar()
         self.carregar_dados()
@@ -34,7 +40,7 @@ class LivroFisicoView:
 
         self.tree = ttk.Treeview(
             frame,
-            columns=("isbn", "titulo", "categoria", "editora", "paginas", "peso"),
+            columns=("isbn", "titulo", "categoria", "editora", "paginas", "peso", "preco"),
             show="headings"
         )
 
@@ -54,6 +60,9 @@ class LivroFisicoView:
 
         self.carregar()
 
+    # =========================
+    # LISTAGEM
+    # =========================
     def carregar(self):
         self.carregar_dados()
         self.tree.delete(*self.tree.get_children())
@@ -63,15 +72,19 @@ class LivroFisicoView:
                 "",
                 "end",
                 values=(
-                    l[0],
-                    l[1],
-                    l[11] if len(l) > 11 else "",
-                    l[13] if len(l) > 13 else "",
-                    l[4],
-                    l[5]
+                    l[0],  # isbn
+                    l[1],  # titulo
+                    l[11] if len(l) > 11 else "",  # categoria
+                    l[13] if len(l) > 13 else "",  # editora
+                    l[4],  # paginas
+                    l[5],  # peso
+                    f"R$ {l[6]:.2f}" if len(l) > 6 else "R$ 0.00"  # preço
                 )
             )
 
+    # =========================
+    # ADICIONAR
+    # =========================
     def adicionar(self):
         self.carregar_dados()
 
@@ -86,19 +99,19 @@ class LivroFisicoView:
         titulo = tk.Entry(win)
         titulo.grid(row=1, column=1)
 
-        # ================= CATEGORIA =================
+        # CATEGORIA
         tk.Label(win, text="Categoria").grid(row=2, column=0)
         cat_map = {c.descricao: c for c in self.categorias}
         cat_combo = ttk.Combobox(win, values=list(cat_map.keys()), state="readonly")
         cat_combo.grid(row=2, column=1)
 
-        # ================= EDITORA (CNPJ) =================
+        # EDITORA
         tk.Label(win, text="Editora (CNPJ)").grid(row=3, column=0)
         edi_map = {e.cnpj: e for e in self.editoras}
         edi_combo = ttk.Combobox(win, values=list(edi_map.keys()), state="readonly")
         edi_combo.grid(row=3, column=1)
 
-        # ================= AUTORES =================
+        # AUTORES
         tk.Label(win, text="Autores").grid(row=4, column=0)
         listbox = tk.Listbox(win, selectmode="multiple")
         listbox.grid(row=4, column=1)
@@ -114,7 +127,18 @@ class LivroFisicoView:
         peso = tk.Entry(win)
         peso.grid(row=6, column=1)
 
+        tk.Label(win, text="Preço").grid(row=7, column=0)
+        preco = tk.Entry(win)
+        preco.grid(row=7, column=1)
+
         def salvar():
+
+            try:
+                preco_valor = float(preco.get().replace(",", ".") or 0)
+                peso_valor = float(peso.get().replace(",", ".") or 0)
+            except:
+                messagebox.showerror("Erro", "Peso ou preço inválido")
+                return
 
             categoria_obj = cat_map.get(cat_combo.get())
             editora_obj = edi_map.get(edi_combo.get())
@@ -130,11 +154,11 @@ class LivroFisicoView:
                 2024,
                 editora_obj,
                 1,
-                0,
+                preco_valor,
                 categoria_obj,
                 autores_obj,
                 int(paginas.get() or 0),
-                float(peso.get() or 0),
+                peso_valor,
                 0, 0, 0,
                 "A1"
             )
@@ -143,8 +167,11 @@ class LivroFisicoView:
             win.destroy()
             self.carregar()
 
-        tk.Button(win, text="Salvar", command=salvar).grid(row=7, column=0, columnspan=2)
+        tk.Button(win, text="Salvar", command=salvar).grid(row=8, column=0, columnspan=2)
 
+    # =========================
+    # EDITAR
+    # =========================
     def editar(self):
         item = self.tree.focus()
         if not item:
@@ -166,6 +193,9 @@ class LivroFisicoView:
 
         tk.Button(win, text="Salvar", command=salvar).grid(row=1, column=0, columnspan=2)
 
+    # =========================
+    # EXCLUIR
+    # =========================
     def excluir(self):
         item = self.tree.focus()
         if not item:
@@ -177,6 +207,9 @@ class LivroFisicoView:
             self.dao.excluir(isbn)
             self.carregar()
 
+    # =========================
+    # LIMPAR
+    # =========================
     def limpar(self):
         for w in self.root.winfo_children():
             w.destroy()

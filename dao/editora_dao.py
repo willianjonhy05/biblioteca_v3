@@ -65,6 +65,20 @@ class EditoraDAO:
         conn.close()
         
         
+    def buscar_id_por_cnpj(self, cnpj):
+        conn = conectar()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT id FROM editora WHERE cnpj = ?
+        """, (cnpj,))
+
+        row = cursor.fetchone()
+        conn.close()
+
+        return row[0] if row else None        
+        
+        
     def contar_livros(self, cnpj):
         conn = conectar()
         cursor = conn.cursor()
