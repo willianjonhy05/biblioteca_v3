@@ -2,6 +2,8 @@ from database.db import conectar
 from dao.editora_dao import EditoraDAO
 
 
+
+
 class LivroFisicoDAO:
 
     # =========================

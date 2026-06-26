@@ -171,5 +171,25 @@ def criar_tabela():
         )
     """)
 
+
+
+    # =========================
+    # VENDA / CAIXA
+    # =========================
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS venda (
+            codigo INTEGER PRIMARY KEY AUTOINCREMENT,
+            isbn TEXT NOT NULL,
+            quantidade INTEGER NOT NULL,
+            valor_unitario REAL NOT NULL,
+            valor_total REAL NOT NULL,
+            data_venda TEXT DEFAULT CURRENT_TIMESTAMP,
+
+            FOREIGN KEY (isbn)
+                REFERENCES livro(isbn)
+                ON DELETE CASCADE
+        )
+    """)
+
     conn.commit()
     conn.close()

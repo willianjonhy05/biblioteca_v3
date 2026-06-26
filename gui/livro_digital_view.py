@@ -7,12 +7,15 @@ from dao.editora_dao import EditoraDAO
 from dao.autor_dao import AutorDAO
 from models.livro import LivroDigital
 
+from dao.venda_dao import VendaDAO
+
 
 class LivroDigitalView:
 
     def __init__(self, root, voltar):
         self.root = root
         self.dao = LivroDigitalDAO()
+        self.venda_dao = VendaDAO()
         self.voltar = voltar
         self.tela()
 
@@ -55,6 +58,7 @@ class LivroDigitalView:
         tk.Button(btn, text="Novo", command=self.adicionar).grid(row=0, column=1)
         tk.Button(btn, text="Detalhes", command=self.detalhes).grid(row=0, column=2)
         tk.Button(btn, text="Editar", command=self.editar).grid(row=0, column=3)
+        tk.Button(btn, text="Comprar", command=self.comprar).grid(row=0, column=4)
         tk.Button(btn, text="Excluir", command=self.excluir).grid(row=0, column=4)
         tk.Button(btn, text="Voltar", command=self.voltar).grid(row=0, column=5)
 
@@ -231,7 +235,6 @@ Tamanho MB: {livro[8]}
 
         tk.Button(win, text="Salvar", command=salvar).grid(row=3, column=0, columnspan=2)
 
-
     def comprar(self):
         item = self.tree.focus()
 
@@ -242,7 +245,7 @@ Tamanho MB: {livro[8]}
         isbn = self.tree.item(item, "values")[0]
 
         win = tk.Toplevel(self.root)
-        win.title("Comprar Livro")
+        win.title("Comprar Livro Digital")
 
         tk.Label(win, text="Quantidade").grid(row=0, column=0)
         qtd = tk.Entry(win)
@@ -251,14 +254,14 @@ Tamanho MB: {livro[8]}
         def confirmar():
             try:
                 quantidade = int(qtd.get())
-                if quantidade <= 0:
-                    raise ValueError
 
-                total = self.dao.comprar(isbn, quantidade)
+                venda = self.venda_dao.vender(isbn, quantidade)
 
                 messagebox.showinfo(
                     "Compra realizada",
-                    f"Total: R$ {total:.2f}"
+                    f"Livro: {venda['titulo']}\n"
+                    f"Quantidade: {venda['quantidade']}\n"
+                    f"Total: R$ {venda['valor_total']:.2f}"
                 )
 
                 win.destroy()

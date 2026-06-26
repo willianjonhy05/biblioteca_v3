@@ -85,11 +85,12 @@ class EditoraDAO:
 
         cursor.execute("""
             SELECT COUNT(*)
-            FROM livro
-            WHERE editora_cnpj = ?
+            FROM livro l
+            INNER JOIN editora e ON e.id = l.editora_id
+            WHERE e.cnpj = ?
         """, (cnpj,))
 
         qtd = cursor.fetchone()[0]
         conn.close()
 
-        return qtd        
+        return qtd

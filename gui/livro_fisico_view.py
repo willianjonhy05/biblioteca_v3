@@ -9,11 +9,15 @@ from dao.autor_dao import AutorDAO
 from models.livro import LivroFisico
 
 
+from dao.venda_dao import VendaDAO
+
+
 class LivroFisicoView:
 
     def __init__(self, root, voltar):
         self.root = root
         self.dao = LivroFisicoDAO()
+        self.venda_dao = VendaDAO()
         self.voltar = voltar
         self.tela()
 
@@ -55,6 +59,7 @@ class LivroFisicoView:
         tk.Button(btn, text="Novo", command=self.adicionar).grid(row=0, column=1)
         tk.Button(btn, text="Detalhes", command=self.detalhes).grid(row=0, column=2)
         tk.Button(btn, text="Atualizar Livro", command=self.atualizar_livro).grid(row=0, column=3)
+        tk.Button(btn, text="Comprar", command=self.comprar).grid(row=0, column=4)
         tk.Button(btn, text="Excluir", command=self.excluir).grid(row=0, column=4)
         tk.Button(btn, text="Voltar", command=self.voltar).grid(row=0, column=5)
 
@@ -268,11 +273,13 @@ Peso: {livro[8] if len(livro) > 8 else ''}
                 if quantidade <= 0:
                     raise ValueError
 
-                total = self.dao.comprar(isbn, quantidade)
+                venda = self.venda_dao.vender(isbn, quantidade)
 
                 messagebox.showinfo(
                     "Compra realizada",
-                    f"Total: R$ {total:.2f}"
+                    f"Livro: {venda['titulo']}\n"
+                    f"Quantidade: {venda['quantidade']}\n"
+                    f"Total: R$ {venda['valor_total']:.2f}"
                 )
 
                 win.destroy()
